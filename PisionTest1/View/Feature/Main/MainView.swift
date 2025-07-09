@@ -9,21 +9,39 @@ import AVFoundation
 import SwiftUI
 
 struct MainView: View {
-  @State private var currentState = "Snooze"
+  @StateObject private var cameraManager = CameraManager()
   
-  let cameraManager = CameraManager()
-}
-
-extension MainView {
   var body: some View {
     ZStack {
-      Color.clear.ignoresSafeArea()
+      Color.black.ignoresSafeArea()
       
-      VStack {
+      VStack(spacing: 20) {
+        // 카메라 뷰
         CameraView(session: cameraManager.session)
+          .clipShape(RoundedRectangle(cornerRadius: 20))
+          .overlay(
+            RoundedRectangle(cornerRadius: 20)
+              .stroke(stateColor, lineWidth: 3)
+          )
+          .padding()
         
-        Text("상태: \(currentState)")
-          .font(.largeTitle)
+        // 상태 표시
+        VStack(spacing: 10) {
+          Text("현재 상태")
+            .font(.headline)
+            .foregroundColor(.gray)
+          
+          Text(cameraManager.currentState)
+            .font(.largeTitle)
+            .fontWeight(.bold)
+            .foregroundColor(stateColor)
+            .padding()
+            .background(
+              RoundedRectangle(cornerRadius: 15)
+                .fill(stateColor.opacity(0.2))
+            )
+        }
+        .padding(.bottom, 30)
       }
     }
     .onAppear {
@@ -32,6 +50,19 @@ extension MainView {
     }
     .onDisappear {
       cameraManager.stopSession()
+    }
+  }
+  
+  // 상태에 따른 색상
+  private var stateColor: Color {
+    if cameraManager.currentState.contains("Concentration") {
+      return .green
+    } else if cameraManager.currentState.contains("Snooze") {
+      return .orange
+    } else if cameraManager.currentState.contains("감지되지 않음") {
+      return .red
+    } else {
+      return .gray
     }
   }
 }
