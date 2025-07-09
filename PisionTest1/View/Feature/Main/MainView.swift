@@ -16,14 +16,19 @@ struct MainView: View {
       Color.black.ignoresSafeArea()
       
       VStack(spacing: 20) {
-        // 카메라 뷰
-        CameraView(session: cameraManager.session)
-          .clipShape(RoundedRectangle(cornerRadius: 20))
-          .overlay(
-            RoundedRectangle(cornerRadius: 20)
-              .stroke(stateColor, lineWidth: 3)
-          )
-          .padding()
+        // 카메라 뷰 + 관절 오버레이
+        ZStack {
+          CameraView(session: cameraManager.session)
+          
+          // 관절 오버레이
+          PoseOverlayView(bodyPosePoints: cameraManager.bodyPosePoints)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .overlay(
+          RoundedRectangle(cornerRadius: 20)
+            .stroke(stateColor, lineWidth: 3)
+        )
+        .padding()
         
         // 상태 표시
         VStack(spacing: 10) {
@@ -40,6 +45,14 @@ struct MainView: View {
               RoundedRectangle(cornerRadius: 15)
                 .fill(stateColor.opacity(0.2))
             )
+          
+          // 관절 개수 표시 (디버깅용)
+          if !cameraManager.bodyPosePoints.isEmpty {
+            Text("감지된 관절: \(cameraManager.bodyPosePoints.count)개")
+              .font(.caption)
+              .foregroundColor(.gray)
+              .padding(.top, 5)
+          }
         }
         .padding(.bottom, 30)
       }

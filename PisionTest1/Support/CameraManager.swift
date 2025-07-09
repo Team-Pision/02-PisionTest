@@ -14,6 +14,9 @@ final class CameraManager: NSObject, ObservableObject {
   let session = AVCaptureSession()
   @Published var currentState = "대기 중..."
   
+  // 관절 좌표를 저장할 프로퍼티 추가
+  @Published var bodyPosePoints: [VNHumanBodyPoseObservation.JointName: VNRecognizedPoint] = [:]
+  
   private let videoOutput = AVCaptureVideoDataOutput()
   private var isSessionConfigured = false
   private let sessionQueue = DispatchQueue(label: "CameraSessionQueue")
@@ -169,8 +172,36 @@ extension CameraManager {
       // 사람이 감지되지 않음
       DispatchQueue.main.async { [weak self] in
         self?.currentState = "사람이 감지되지 않음"
+        self?.bodyPosePoints = [:]
       }
       return
+    }
+    
+    // 모든 관절 좌표 추출
+    var detectedPoints: [VNHumanBodyPoseObservation.JointName: VNRecognizedPoint] = [:]
+    
+    do {
+      // 주요 관절들
+      let joints: [VNHumanBodyPoseObservation.JointName] = [
+        .nose, .leftEye, .rightEye, .leftEar, .rightEar,
+        .leftShoulder, .rightShoulder, .leftElbow, .rightElbow,
+        .leftWrist, .rightWrist, .leftHip, .rightHip,
+        .leftKnee, .rightKnee, .leftAnkle, .rightAnkle
+      ]
+      
+      for joint in joints {
+        let point = try observation.recognizedPoint(joint)
+        if point.confidence > 0.3 { // 신뢰도가 0.3 이상인 것만
+          detectedPoints[joint] = point
+        }
+      }
+      
+      DispatchQueue.main.async { [weak self] in
+        self?.bodyPosePoints = detectedPoints
+      }
+      
+    } catch {
+      print("관절 추출 실패: \(error)")
     }
     
     // 임시: 포즈 감지 시뮬레이션
