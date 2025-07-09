@@ -22,6 +22,7 @@ struct CameraView: UIViewRepresentable {
     view.backgroundColor = .clear
     view.previewLayer.session = session
     view.previewLayer.videoGravity = .resizeAspectFill
+
     return view
   }
   

@@ -11,7 +11,7 @@ import SwiftUI
 struct MainView: View {
   @State private var currentState = "Snooze"
   
-  let cameraManager = CameraManager()
+  @StateObject private var cameraManager = CameraManager()
 }
 
 extension MainView {
@@ -22,8 +22,11 @@ extension MainView {
       VStack {
         CameraView(session: cameraManager.session)
         
-        Text("상태: \(currentState)")
-          .font(.largeTitle)
+        VStack {
+          Text("rolls: \(cameraManager.rollAngles)") // 고개를 좌/우로 기울이는 동작
+          Text("yaw: \(cameraManager.yawAngles)") // 고개를 좌/우로 도리도리 하는 동작
+        }
+        .font(.headline)
       }
     }
     .onAppear {
