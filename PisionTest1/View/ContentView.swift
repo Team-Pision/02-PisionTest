@@ -8,14 +8,14 @@
 import SwiftUI
 
 struct ContentView: View {
-    var body: some View {
-        VStack {
-          Text("12")
-        }
-        .padding()
+  var body: some View {
+    VStack {
+      Text("12")
     }
+    .padding()
+  }
 }
 
 #Preview {
-    ContentView()
+  ContentView()
 }
