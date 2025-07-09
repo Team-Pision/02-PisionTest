@@ -19,9 +19,6 @@ struct MainView: View {
         // 카메라 뷰 + 관절 오버레이
         ZStack {
           CameraView(session: cameraManager.session)
-          
-          // 관절 오버레이
-//          PoseOverlayView(bodyPosePoints: cameraManager.bodyPosePoints)
         }
         .clipShape(RoundedRectangle(cornerRadius: 20))
         .overlay(
