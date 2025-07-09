@@ -21,7 +21,7 @@ struct MainView: View {
           CameraView(session: cameraManager.session)
           
           // 관절 오버레이
-          PoseOverlayView(bodyPosePoints: cameraManager.bodyPosePoints)
+//          PoseOverlayView(bodyPosePoints: cameraManager.bodyPosePoints)
         }
         .clipShape(RoundedRectangle(cornerRadius: 20))
         .overlay(
