@@ -248,7 +248,7 @@ extension CameraManager {
       // MLMultiArray 생성 (모델의 입력 형식에 맞게)
       // 입력 형태: [120, 3, 18] - 120개 프레임, 3개 좌표(x,y,confidence), 18개 관절
       print("📊 MLMultiArray 생성 시도...")
-      let multiArray = try MLMultiArray(shape: [120, 3, 18], dataType: .float32)
+      let multiArray = try MLMultiArray(shape: [90, 3, 18], dataType: .float32)
       print("✅ MLMultiArray 생성 성공")
       
       // 모든 값을 0으로 초기화
