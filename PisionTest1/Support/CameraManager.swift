@@ -24,7 +24,7 @@ final class CameraManager: NSObject, ObservableObject {
   
   // Vision 관련 프로퍼티
   private var bodyPoseRequest: VNDetectHumanBodyPoseRequest?
-  private var mlModel: PisionTestModel?
+  private var mlModel: pisionModel22?
   
   override init() {
     super.init()
@@ -35,7 +35,7 @@ final class CameraManager: NSObject, ObservableObject {
     // Core ML 모델 로드
     do {
       let config = MLModelConfiguration()
-      mlModel = try PisionTestModel(configuration: config)
+      mlModel = try pisionModel22(configuration: config)
       print("PisionTestModel 로드 성공")
     } catch {
       print("모델 로드 실패: \(error)")
@@ -246,9 +246,9 @@ extension CameraManager {
     
     do {
       // MLMultiArray 생성 (모델의 입력 형식에 맞게)
-      // 입력 형태: [120, 3, 18] - 120개 프레임, 3개 좌표(x,y,confidence), 18개 관절
+      // 입력 형태: [30, 3, 18] - 30개 프레임, 3개 좌표(x,y,confidence), 18개 관절
       print("📊 MLMultiArray 생성 시도...")
-      let multiArray = try MLMultiArray(shape: [90, 3, 18], dataType: .float32)
+      let multiArray = try MLMultiArray(shape: [30, 3, 18], dataType: .float32)
       print("✅ MLMultiArray 생성 성공")
       
       // 모든 값을 0으로 초기화
@@ -313,19 +313,6 @@ extension CameraManager {
           DispatchQueue.main.async { [weak self] in
             self?.currentState = output
           }
-//        if let confidenceArray = prediction.featureValue(for: "classLabelProbs")?.dictionaryValue {
-//          print("✅ 신뢰도 딕셔너리 획득")
-//          
-//          // 신뢰도 값 가져오기
-//          let confidence = confidenceArray[output] as? Double ?? 0.0
-//          print("✅ 최종 신뢰도: \(confidence)")
-//          
-//          DispatchQueue.main.async { [weak self] in
-//            self?.currentState = "\(output) (신뢰도: \(String(format: "%.1f%%", confidence * 100)))"
-//          }
-//        } else {
-//          print("⚠️ classLabelProbs를 찾을 수 없음")
-//        }
       } else {
         print("⚠️ label을 찾을 수 없음")
         print("🔍 사용 가능한 feature 이름들:")

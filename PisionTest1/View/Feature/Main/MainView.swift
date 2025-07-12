@@ -65,7 +65,7 @@ struct MainView: View {
   
   // 상태에 따른 색상
   private var stateColor: Color {
-    if cameraManager.currentState.contains("Concentration") {
+    if cameraManager.currentState.contains("Focus") {
       return .green
     } else if cameraManager.currentState.contains("Snooze") {
       return .orange
