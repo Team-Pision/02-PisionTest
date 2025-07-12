@@ -19,6 +19,19 @@ struct MainView: View {
         // 카메라 뷰 + 관절 오버레이
         ZStack {
           CameraView(session: cameraManager.session)
+          
+          // 관절 오버레이
+          ForEach(Array(cameraManager.bodyPosePoints), id: \.key) { jointName, point in
+            GeometryReader { geometry in
+              let x = (1 - CGFloat(point.y)) * geometry.size.width
+              let y = (1 - CGFloat(point.x)) * geometry.size.height
+
+              Circle()
+                .fill(Color.blue)
+                .frame(width: 10, height: 10)
+                .position(x: x, y: y)
+            }
+          }
         }
         .clipShape(RoundedRectangle(cornerRadius: 20))
         .overlay(
