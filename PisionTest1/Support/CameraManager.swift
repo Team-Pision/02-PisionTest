@@ -26,6 +26,9 @@ final class CameraManager: NSObject, ObservableObject {
   private var bodyPoseRequest: VNDetectHumanBodyPoseRequest?
   private var mlModel: pisionModel22?
   
+  // 30개의 프레임 시퀀스를 저장하는 버퍼
+  private var poseObservationBuffer: [VNHumanBodyPoseObservation] = []
+  
   override init() {
     super.init()
     setupVision()
@@ -203,9 +206,23 @@ extension CameraManager {
       print("관절 추출 실패: \(error)")
     }
     
-    // Core ML 모델로 포즈 분류
-    classifyPose(from: observation)
+    // 버퍼 업데이트 함수
+    updatePoseBuffer(with: observation)
   }
+  
+  // 버퍼 업데이트 함수
+  private func updatePoseBuffer(with observation: VNHumanBodyPoseObservation) {
+      poseObservationBuffer.append(observation)
+      
+      if poseObservationBuffer.count > 30 {
+          poseObservationBuffer.removeFirst()
+      }
+      
+      if poseObservationBuffer.count == 30 {
+          classifyPoseSequence(from: poseObservationBuffer)
+      }
+  }
+
   
   // 임시 시뮬레이션 함수
   private func simulatePoseClassification(from observation: VNHumanBodyPoseObservation) {
@@ -232,103 +249,64 @@ extension CameraManager {
     }
   }
   
-  private func classifyPose(from observation: VNHumanBodyPoseObservation) {
-    print("🔍 classifyPose 시작")
-    
-    guard let mlModel = mlModel else {
-      print("❌ ML 모델이 로드되지 않았습니다")
-      // 모델이 없으면 시뮬레이션 사용
-      simulatePoseClassification(from: observation)
-      return
-    }
-    
-    print("✅ ML 모델 로드 확인")
-    
-    do {
-      // MLMultiArray 생성 (모델의 입력 형식에 맞게)
-      // 입력 형태: [30, 3, 18] - 30개 프레임, 3개 좌표(x,y,confidence), 18개 관절
-      print("📊 MLMultiArray 생성 시도...")
-      let multiArray = try MLMultiArray(shape: [30, 3, 18], dataType: .float32)
-      print("✅ MLMultiArray 생성 성공")
-      
-      // 모든 값을 0으로 초기화
-      for i in 0..<multiArray.count {
-        multiArray[i] = 0
+  private func classifyPoseSequence(from observations: [VNHumanBodyPoseObservation]) {
+      print("🔍 classifyPoseSequence 시작")
+
+      guard let mlModel = mlModel else {
+          print("❌ ML 모델이 로드되지 않았습니다")
+          return
       }
-      
-      // 관절 인덱스 매핑 (18개 관절)
-      let jointMapping: [(VNHumanBodyPoseObservation.JointName, Int)] = [
-        (.nose, 0), (.leftEye, 1), (.rightEye, 2), (.leftEar, 3), (.rightEar, 4),
-        (.leftShoulder, 5), (.rightShoulder, 6), (.leftElbow, 7), (.rightElbow, 8),
-        (.leftWrist, 9), (.rightWrist, 10), (.leftHip, 11), (.rightHip, 12),
-        (.leftKnee, 13), (.rightKnee, 14), (.leftAnkle, 15), (.rightAnkle, 16),
-        (.neck, 17)  // 18번째 관절 추가
-      ]
-      
-      // 현재 프레임의 관절 데이터를 첫 번째 프레임(인덱스 0)에만 입력
-      print("🦴 관절 데이터 입력 시작...")
-      var detectedJointCount = 0
-      
-      for (joint, index) in jointMapping {
-        if index < 17 {  // neck은 Vision에서 직접 제공하지 않으므로 처리
-          if let point = try? observation.recognizedPoint(joint) {
-            // [프레임=0, 좌표, 관절] 순서로 데이터 입력
-            multiArray[[0, 0, index] as [NSNumber]] = NSNumber(value: Float(point.x))      // x
-            multiArray[[0, 1, index] as [NSNumber]] = NSNumber(value: Float(point.y))      // y
-            multiArray[[0, 2, index] as [NSNumber]] = NSNumber(value: Float(point.confidence)) // confidence
-            detectedJointCount += 1
+
+      do {
+          let multiArray = try MLMultiArray(shape: [30, 3, 18], dataType: .float32)
+          for i in 0..<multiArray.count {
+              multiArray[i] = 0
           }
-        } else {
-          // neck 관절은 leftShoulder와 rightShoulder의 중간점으로 계산
-          if let leftShoulder = try? observation.recognizedPoint(.leftShoulder),
-             let rightShoulder = try? observation.recognizedPoint(.rightShoulder) {
-            let neckX = (leftShoulder.x + rightShoulder.x) / 2
-            let neckY = (leftShoulder.y + rightShoulder.y) / 2
-            let neckConfidence = (leftShoulder.confidence + rightShoulder.confidence) / 2
-            
-            multiArray[[0, 0, 17] as [NSNumber]] = NSNumber(value: Float(neckX))
-            multiArray[[0, 1, 17] as [NSNumber]] = NSNumber(value: Float(neckY))
-            multiArray[[0, 2, 17] as [NSNumber]] = NSNumber(value: Float(neckConfidence))
-            detectedJointCount += 1
+
+          let jointMapping: [(VNHumanBodyPoseObservation.JointName, Int)] = [
+              (.nose, 0), (.leftEye, 1), (.rightEye, 2), (.leftEar, 3), (.rightEar, 4),
+              (.leftShoulder, 5), (.rightShoulder, 6), (.leftElbow, 7), (.rightElbow, 8),
+              (.leftWrist, 9), (.rightWrist, 10), (.leftHip, 11), (.rightHip, 12),
+              (.leftKnee, 13), (.rightKnee, 14), (.leftAnkle, 15), (.rightAnkle, 16),
+              (.neck, 17)
+          ]
+
+          for (frameIndex, observation) in observations.enumerated() {
+              for (joint, jointIndex) in jointMapping {
+                  if jointIndex < 17 {
+                      if let point = try? observation.recognizedPoint(joint) {
+                          multiArray[[frameIndex, 0, jointIndex] as [NSNumber]] = NSNumber(value: Float(point.x))
+                          multiArray[[frameIndex, 1, jointIndex] as [NSNumber]] = NSNumber(value: Float(point.y))
+                          multiArray[[frameIndex, 2, jointIndex] as [NSNumber]] = NSNumber(value: Float(point.confidence))
+                      }
+                  } else {
+                      if let l = try? observation.recognizedPoint(.leftShoulder),
+                         let r = try? observation.recognizedPoint(.rightShoulder) {
+                          let neckX = (l.x + r.x) / 2
+                          let neckY = (l.y + r.y) / 2
+                          let neckConf = (l.confidence + r.confidence) / 2
+                          multiArray[[frameIndex, 0, jointIndex] as [NSNumber]] = NSNumber(value: Float(neckX))
+                          multiArray[[frameIndex, 1, jointIndex] as [NSNumber]] = NSNumber(value: Float(neckY))
+                          multiArray[[frameIndex, 2, jointIndex] as [NSNumber]] = NSNumber(value: Float(neckConf))
+                      }
+                  }
+              }
           }
-        }
+
+          let input = PisionTestModelInput(poses: multiArray)
+          let prediction = try mlModel.model.prediction(from: input)
+
+          if let output = prediction.featureValue(for: "label")?.stringValue {
+              print("✅ 예측 레이블: \(output)")
+              DispatchQueue.main.async { [weak self] in
+                  self?.currentState = output
+              }
+          } else {
+              print("⚠️ label 예측 실패")
+          }
+
+      } catch {
+          print("❌ 예측 중 오류 발생: \(error)")
       }
-      
-      print("✅ 관절 데이터 입력 완료 (감지된 관절: \(detectedJointCount)/18)")
-      print("📐 입력 배열 shape: \(multiArray.shape)")
-      
-      // 모델 예측 실행
-      print("🤖 모델 예측 시작...")
-      let input = PisionTestModelInput(poses: multiArray)
-      print("✅ PisionTestModelInput 생성 성공")
-      
-      let prediction = try mlModel.model.prediction(from: input)
-      print("✅ 모델 예측 성공")
-      
-      // 결과 처리
-      print("📝 예측 결과 처리 중...")
-      if let output = prediction.featureValue(for: "label")?.stringValue {
-        print("✅ 예측 레이블: \(output)")
-          
-          DispatchQueue.main.async { [weak self] in
-            self?.currentState = output
-          }
-      } else {
-        print("⚠️ label을 찾을 수 없음")
-        print("🔍 사용 가능한 feature 이름들:")
-        for featureName in prediction.featureNames {
-          print("  - \(featureName)")
-        }
-      }
-      
-    } catch {
-      print("❌ 포즈 분류 실패")
-      print("❌ 에러 타입: \(type(of: error))")
-      print("❌ 에러 상세: \(error)")
-      print("❌ 에러 로컬라이즈드: \(error.localizedDescription)")
-      
-      // 에러 발생시 임시 시뮬레이션 사용
-      simulatePoseClassification(from: observation)
-    }
   }
 }
